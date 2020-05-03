@@ -1,0 +1,1 @@
+find audio_files/ -name "*.wav" -printf '%p ' -exec soxi -D {} \; > duration_all_audio_files

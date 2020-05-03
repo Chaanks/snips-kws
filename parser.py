@@ -27,17 +27,6 @@ def parse_config(args):
     args.dev_path= Path(config['Datasets'].get('dev'))
     args.test_path = Path(config['Datasets'].get('test')) 
 
-    args.n_fft = config['MFCC'].getint('n_fft')
-    args.frame_length = config['MFCC'].getint('frame_length')
-    args.frame_shift = config['MFCC'].getint('frame_shift')
-    args.channel = config['MFCC'].getint('channel')
-    args.dither = config['MFCC'].getfloat('dither')
-    args.window_type = config['MFCC'].get('window_type')
-    args.sample_frequency = config['MFCC'].getint('sample_frequency')
-    args.num_ceps = config['MFCC'].getint('num_ceps')
-    args.num_mel_bins = config['MFCC'].getint('num_mel_bins')
-    args.snip_edges = config['MFCC'].getboolean('snip_edges')
-
     args.model_type = config['Model'].get('model_type', fallback='LSTM')
     assert args.model_type in ['LSTM']
 
@@ -62,6 +51,25 @@ def parse_config(args):
     args.checkpoint_interval = config['Outputs'].getint('checkpoint_interval')
 
     return args
+
+def parse_mfcc(args):
+    config = configparser.ConfigParser()
+    config.read(args.cfg)
+
+    args.train_path = Path(config['Datasets'].get('train'))
+    args.dev_path= Path(config['Datasets'].get('dev'))
+    args.test_path = Path(config['Datasets'].get('test')) 
+
+    args.n_fft = config['MFCC'].getint('n_fft')
+    args.frame_length = config['MFCC'].getint('frame_length')
+    args.frame_shift = config['MFCC'].getint('frame_shift')
+    args.channel = config['MFCC'].getint('channel')
+    args.dither = config['MFCC'].getfloat('dither')
+    args.window_type = config['MFCC'].get('window_type')
+    args.sample_frequency = config['MFCC'].getint('sample_frequency')
+    args.num_ceps = config['MFCC'].getint('num_ceps')
+    args.num_mel_bins = config['MFCC'].getint('num_mel_bins')
+    args.snip_edges = config['MFCC'].getboolean('snip_edges')
 
 def get_mfcc_cfg(args):
     return {
