@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from pytorch_lightning import Trainer
 
 from model import Net
 from parser import parse_args, parse_config
@@ -38,6 +39,6 @@ if __name__ == "__main__":
     np.random.seed(seed=args.seed)
 
     model = Net(args)
-    print('train begin')
-    model.train_dataloader()
-    print('train end')
+    trainer = Trainer(max_epochs=2, gpus=1)
+    trainer.fit(model)
+

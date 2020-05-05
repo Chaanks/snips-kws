@@ -26,6 +26,7 @@ def parse_config(args):
     assert args.train_path
     args.dev_path= Path(config['Datasets'].get('dev'))
     args.test_path = Path(config['Datasets'].get('test')) 
+    args.mfcc_path = Path(config['Datasets'].get('mfcc'))
 
     args.model_type = config['Model'].get('model_type', fallback='LSTM')
     assert args.model_type in ['LSTM']

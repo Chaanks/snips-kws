@@ -1,5 +1,9 @@
 import json
+import pickle
 
+def load_mfcc(path):
+    with open(path, 'rb') as file:
+        return pickle.load(file)
 
 def load_json(path):
     with open(path, 'r') as file:
