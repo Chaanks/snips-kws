@@ -87,8 +87,22 @@ class Net(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        return {'val_loss': nn.BCEWithLogitsLoss()(y_hat, y)}
+        loss = nn.BCEWithLogitsLoss()(y_hat, y)
+        return {'val_loss': loss}
 
     def validation_epoch_end(self, outputs):
-        val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
-        return {'val_loss': val_loss_mean}
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        logs = {'eval_loss': avg_loss}
+        return {'val_loss': avg_loss, 'log': logs}
+
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = nn.BCEWithLogitsLoss()(logits, y)
+        return {'test_loss': loss}
+
+    def test_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['test_loss'] for x in outputs]).mean()
+        logs = {'test_loss': avg_loss}
+        return {'test_loss': avg_loss, 'log': logs}

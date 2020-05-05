@@ -41,4 +41,5 @@ if __name__ == "__main__":
     model = Net(args)
     trainer = Trainer(max_epochs=2, gpus=1)
     trainer.fit(model)
+    trainer.test()
 
