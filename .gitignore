@@ -7,8 +7,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vscode
-exp
-exp/*
+exp/
+mfcc/
 runs/*
 # C extensions
 *.so
