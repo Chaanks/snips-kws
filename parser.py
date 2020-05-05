@@ -71,6 +71,11 @@ def parse_mfcc(args):
     args.num_mel_bins = config['MFCC'].getint('num_mel_bins')
     args.snip_edges = config['MFCC'].getboolean('snip_edges')
 
+    args.mfcc_dir = Path(config['Outputs'].get('mfcc_dir'))
+    args.log_file = args.mfcc_dir / 'compute_mfcc.log'
+
+    return args
+
 def get_mfcc_cfg(args):
     return {
         "channel": args.channel,
