@@ -36,7 +36,7 @@ class Dataset(data.Dataset):
     def __getitem__(self, idx):
             'Generates one sample of data'
             t = torch.Tensor([self.targets[idx]])
-            return self.features[idx], t
+            return self.features[idx], t, idx
 
     def prepare_data(self):
         features = []
