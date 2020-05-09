@@ -14,10 +14,11 @@ from pytorch_lightning.loggers import CometLogger
 from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import accuracy_score
+from loguru import logger
 
 import parser
 from dataset import Dataset
-
+from utils import compute_score
 
 class Net(pl.LightningModule):
     def __init__(self, cfg):
@@ -25,8 +26,9 @@ class Net(pl.LightningModule):
         self.cfg = cfg
 
         self.lstm = nn.LSTM(4000, 8, bidirectional=False)
-        self.fc1 = nn.Linear(8 * 10, 80)
-        self.fc2 = nn.Linear(80, 1)
+        self.fc1 = nn.Linear(8 * 10, 512)
+        self.fc2 = nn.Linear(512, 128)
+        self.fc3 = nn.Linear(128, 1)
 
     def forward(self, x):
         #print(x.shape)
@@ -35,7 +37,8 @@ class Net(pl.LightningModule):
 
         #print(lstm_out.shape)
         x = F.relu(self.fc1(lstm_out.view(lstm_out.shape[1], -1)))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
 
         #prob = F.log_softmax(x, dim=1)
         return x
@@ -63,7 +66,7 @@ class Net(pl.LightningModule):
         # can also return a list of val dataloaders
         self.ds_val = Dataset(self.cfg.dev_path, self.cfg.mfcc_path)
         val_params = {'batch_size': self.cfg.batch_size,
-                        'shuffle': True,
+                        'shuffle': False,
                         'num_workers': 6}
 
         return DataLoader(self.ds_val, **val_params)
@@ -72,7 +75,7 @@ class Net(pl.LightningModule):
         # can also return a list of test dataloaders
         self.ds_test =Dataset(self.cfg.test_path, self.cfg.mfcc_path)
         test_params = {'batch_size': self.cfg.batch_size,
-                        'shuffle': True,
+                        'shuffle': False,
                         'num_workers': 6}
 
         return DataLoader(self.ds_test, **test_params)
@@ -82,7 +85,7 @@ class Net(pl.LightningModule):
         return optim.SGD(self.parameters(), lr=self.cfg.lr, momentum=self.cfg.momentum)
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, idx = batch
         logits = self(x)
         loss = nn.BCEWithLogitsLoss()(logits, y)
 
@@ -101,7 +104,7 @@ class Net(pl.LightningModule):
         pred[logits > 0] = 1
 
         correct_pred = pred.eq(y.view_as(pred)).sum().item()
-        idpred = list(zip(idx.cpu(), pred.cpu()))
+        idpred = list(zip(idx.cpu(), pred.cpu(), y.cpu()))
 
         return {'val_loss': loss, 'correct': correct_pred, 'id_pred': idpred}
 
@@ -109,24 +112,16 @@ class Net(pl.LightningModule):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         sum_correct = sum([x['correct'] for x in outputs])
         all_pred = list(chain(*[x['id_pred'] for x in outputs]))
-        #[list(chain(*lists)) for lists in zip(*a)]
 
-        #print(outputs)
-        print(100. * sum_correct / len(self.ds_val))
-        print(len(self.ds_val))
-        print(sum_correct)
-
-        print(all_pred[0])
-        print(all_pred[0][0].item())
-
-        a = input()
-
-        logs = {'eval_loss': avg_loss}
+        score, acc = compute_score(all_pred)
+        
+        logger.info(score)
+        logs = {'eval_loss': avg_loss, 'val_acc': acc}
         return {'val_loss': avg_loss, 'log': logs}
 
 
     def test_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, idx = batch
         logits = self(x)
         loss = nn.BCEWithLogitsLoss()(logits, y)
         return {'test_loss': loss}

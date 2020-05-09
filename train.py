@@ -39,7 +39,7 @@ if __name__ == "__main__":
     np.random.seed(seed=args.seed)
 
     model = Net(args)
-    trainer = Trainer(max_epochs=1, gpus=1)
+    trainer = Trainer(gpus=1, num_sanity_val_steps=0, max_epochs=10000) #num_sanity_val_steps=0 max_epochs=10 early_stop_callback=True
     trainer.fit(model)
-    trainer.test()
+    #trainer.test()
 
