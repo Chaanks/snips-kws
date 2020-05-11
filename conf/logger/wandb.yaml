@@ -1,0 +1,7 @@
+wandb:
+    entity: ""
+    project: default
+    log: False
+    notes:
+    name:
+    public: True # It will be display the model within wandb log, else not.

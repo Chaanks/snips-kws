@@ -1,0 +1,12 @@
+defaults:
+  - training: default
+  - logger: wandb
+
+datasets:
+  train: /home/nas02a/etudiants/inf/uapv1703431/snips/splits/train.json
+  dev: /home/nas02a/etudiants/inf/uapv1703431/snips/splits/dev.json
+  test: /home/nas02a/etudiants/inf/uapv1703431/snips/splits/test.json
+
+model_type: LSTM
+model_dir: ???
+pretty_print: True

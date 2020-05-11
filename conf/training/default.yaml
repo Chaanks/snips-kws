@@ -1,0 +1,28 @@
+# Those arguments defines the training hyper-parameters
+training:
+    epochs: 100
+    num_workers: 6
+    batch_size: 16
+    shuffle: True
+    no_cuda: False
+    optim:
+        base_lr: 0.01
+        grad_clip: -1
+        optimizer:
+            class: Adam
+            params:
+                lr: ${training.optim.base_lr} # The path is cut from training
+        lr_scheduler: 
+          scheduler_steps: [60000, 80000, 90000, 110000]
+          scheduler_lambda: 0.5
+        bn_scheduler:
+            bn_policy: "step_decay"
+            params:
+                bn_momentum: 0.1
+                bn_decay: 0.9
+                decay_step : 10
+                bn_clip : 1e-2
+    enable_cudnn: True
+    checkpoint:
+      dir: "checkpoints/"
+      step: 500
