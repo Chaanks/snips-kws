@@ -10,6 +10,7 @@ __pycache__/
 exp/
 mfcc/
 lightning_logs/
+outputs/
 runs/*
 # C extensions
 *.so
