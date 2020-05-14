@@ -1,5 +1,6 @@
 import json
 import pickle
+from loguru import logger
 
 def load_mfcc(path):
     with open(path, 'rb') as file:
@@ -22,16 +23,29 @@ def load_2_col(path):
     return data
 
 
-def compute_score(ds):
+def compute_score(ds, all_pred):
     result = {
         'true_true': 0,
         'true_false': 0,
         'false_true': 0,
         'false_false': 0,
     }
-    
-    for row in ds:
-        idx, p, t = row
+
+    #logger.add('debug.log', format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}", backtrace=False, diagnose=False)
+
+    id2pred = {}
+    for row in all_pred:
+        idx, p, t = row[0].item(), row[1].item(), row[2].item()
+        utt_id = ds.mfcc2utt[idx]
+        if utt_id not in id2pred:
+            id2pred[utt_id] = (p, t)
+        else:
+            if p == 1 and id2pred[utt_id][0] == 0:
+                id2pred[utt_id] = (p, t)
+        #logger.debug('idx: {} utt_id: {} pred: {} dict: {}'.format(idx, utt_id, p, id2pred[utt_id]))
+
+    for k, v in id2pred.items():
+        p, t = v
         if p == 1 and t == 1:
             result['true_true'] += 1
         elif p == 0 and t == 0:
