@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 from torch.utils import data
+from sklearn import preprocessing
 
 import numpy as np
 from loguru import logger
@@ -13,7 +14,7 @@ from utils import load_mfcc, load_json
 
 
 UTT_LENGTH = 1000
-WINDOW_SIZE = 10
+WINDOW_SIZE = 50 # 25 a tester
 
 
 class Dataset(data.Dataset):
@@ -24,6 +25,7 @@ class Dataset(data.Dataset):
         self.mfcc_path = Path(mfcc_path / ds_path.stem).with_suffix('.p')
         self.ds_data = load_json(self.ds_path)
         self.utt2mfcc = load_mfcc(self.mfcc_path)
+        self.mfcc2utt = {}
         logger.info('[{}/{}] training examples loaded from {}'.format(len(self.utt2mfcc), len(self.ds_data), self.ds_path.name))
 
         self.features, self.targets = self.prepare_data()
@@ -41,16 +43,21 @@ class Dataset(data.Dataset):
     def prepare_data(self):
         features = []
         targets = []
+        mfcc_id = 0
         for utt in self.ds_data:
             if utt['id'] in self.utt2mfcc:
-                mfcc = self.utt2mfcc[utt['id']]
+                #mfcc = self.utt2mfcc[utt['id']]
+                mfcc = torch.from_numpy(preprocessing.scale(self.utt2mfcc[utt['id']], axis=0)).float()
             else:
                 logger.warning('Missing mfcc for utt {}'.format(utt))
 
             for chunk in mfcc.split(UTT_LENGTH):
                 padded = F.pad(input=chunk, pad=(0, 0, 0, UTT_LENGTH - chunk.shape[0]), mode='constant', value=0)
-                features.append(padded.view(WINDOW_SIZE, -1))
+                windowed = padded.view(WINDOW_SIZE, -1)
+                features.append(windowed)
                 targets.append(utt['is_hotword'])
+                self.mfcc2utt[mfcc_id] = utt['id']
+                mfcc_id += 1
             #if mfcc.shape[0] > UTT_LENGTH:
                 #print(self.ds_data[idx])
                 #print(mfcc.shape)

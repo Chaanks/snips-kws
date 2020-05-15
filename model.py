@@ -6,6 +6,7 @@ from torch import nn
 import torch.optim as optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
+from sklearn import preprocessing
 
 import numpy as np
 
@@ -18,38 +19,46 @@ from loguru import logger
 
 import parser
 from dataset import Dataset
-from utils import compute_score
+from utils import compute_score, weight_init
 
 class Net(pl.LightningModule):
     def __init__(self, cfg):
         super(Net, self).__init__()
         self.cfg = cfg
 
-        self.lstm = nn.LSTM(4000, 8, bidirectional=False)
-        self.fc1 = nn.Linear(8 * 10, 512)
-        self.fc2 = nn.Linear(512, 128)
-        self.fc3 = nn.Linear(128, 1)
+        self.rnn = nn.GRU(520, 128, num_layers=2, dropout=0.5, bidirectional=False) #4000
+        #nn.init.xavier_uniform(self.lstm)
+        self.fc1 = nn.Linear(128 * 50, 64)
+        #nn.init.xavier_uniform(self.fc1.weight)
+        #self.fc2 = nn.Linear(256, 64)
+        #self.fc3 = nn.Linear(256, 128)
+        self.fc4 = nn.Linear(64, 1)
+        #nn.init.xavier_uniform(self.fc4.weight)
+        self.dropout = nn.Dropout(p=0.2)
+        #self.bn1 = nn.BatchNorm1d(num_features=64)
 
     def forward(self, x):
         #print(x.shape)
-        #print(x.view(x.shape[1], x.shape[0], -1).shape)
-        lstm_out, _ = self.lstm(x.view(x.shape[1], x.shape[0], -1))
+        print(x.view(x.shape[1], x.shape[0], -1).shape)
+        lstm_out, _ = self.rnn(x.view(x.shape[1], x.shape[0], -1))
 
         #print(lstm_out.shape)
-        x = F.relu(self.fc1(lstm_out.view(lstm_out.shape[1], -1)))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.dropout(F.relu(self.fc1(lstm_out.view(lstm_out.shape[1], -1))))
+        #x = F.relu(self.fc2(x))
+        #x = F.relu(self.fc3(x))
+        x = self.fc4(x)
 
         #prob = F.log_softmax(x, dim=1)
         return x
 
-    #def prepare_data(self):
+    def prepare_data(self):
         # stuff here is done once at the very beginning of training
         # before any distributed training starts
 
         # download stuff
         # save to disk
         # etc...
+        self.apply(weight_init)
 
     def train_dataloader(self):
         # data transforms
@@ -82,7 +91,8 @@ class Net(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        return optim.SGD(self.parameters(), lr=self.cfg.lr, momentum=self.cfg.momentum)
+        #return optim.SGD(self.parameters(), lr=self.cfg.lr, momentum=self.cfg.momentum)
+        return optim.Adam(self.parameters(), lr=self.cfg.lr)#amsgrad=True
 
     def training_step(self, batch, batch_idx):
         x, y, idx = batch
@@ -113,7 +123,7 @@ class Net(pl.LightningModule):
         sum_correct = sum([x['correct'] for x in outputs])
         all_pred = list(chain(*[x['id_pred'] for x in outputs]))
 
-        score, acc = compute_score(all_pred)
+        score, acc = compute_score(self.ds_val, all_pred)
         
         logger.info(score)
         logs = {'eval_loss': avg_loss, 'val_acc': acc}
