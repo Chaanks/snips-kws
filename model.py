@@ -6,7 +6,8 @@ from torch import nn
 import torch.optim as optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
-from sklearn import preprocessing
+from sklearn import preprocessing 
+from sklearn.metrics import f1_score
 
 import numpy as np
 
@@ -16,30 +17,26 @@ from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import accuracy_score
 from loguru import logger
+import wandb
 
 import parser
 from dataset import Dataset
-from utils import compute_score, weight_init
+from utils import compute_score, weight_init, compute_precision_recall
 
 class Net(pl.LightningModule):
     def __init__(self, cfg):
         super(Net, self).__init__()
         self.cfg = cfg
 
-        self.rnn = nn.GRU(520, 128, num_layers=2, dropout=0.5, bidirectional=False) #4000
-        #nn.init.xavier_uniform(self.lstm)
+        self.rnn = nn.GRU(260, 128, num_layers=2, dropout=0.5, bidirectional=False) #4000
         self.fc1 = nn.Linear(128 * 50, 64)
-        #nn.init.xavier_uniform(self.fc1.weight)
-        #self.fc2 = nn.Linear(256, 64)
-        #self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(64, 1)
-        #nn.init.xavier_uniform(self.fc4.weight)
         self.dropout = nn.Dropout(p=0.2)
+        self.fc4 = nn.Linear(64, 1)
         #self.bn1 = nn.BatchNorm1d(num_features=64)
 
     def forward(self, x):
         #print(x.shape)
-        print(x.view(x.shape[1], x.shape[0], -1).shape)
+        #print(x.view(x.shape[1], x.shape[0], -1).shape)
         lstm_out, _ = self.rnn(x.view(x.shape[1], x.shape[0], -1))
 
         #print(lstm_out.shape)
@@ -110,23 +107,36 @@ class Net(pl.LightningModule):
         logits = self(x)
         loss = nn.BCEWithLogitsLoss()(logits, y)
 
+        logits = nn.Sigmoid()(logits)
         pred = torch.full(logits.shape, 0).cuda()
-        pred[logits > 0] = 1
+        pred[logits > 0.4] = 1
 
         correct_pred = pred.eq(y.view_as(pred)).sum().item()
         idpred = list(zip(idx.cpu(), pred.cpu(), y.cpu()))
 
-        return {'val_loss': loss, 'correct': correct_pred, 'id_pred': idpred}
+        return {'val_loss': loss, 'correct': correct_pred, 'id_pred': idpred, 'logits': logits.cpu(), 'y_true': y.cpu()}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         sum_correct = sum([x['correct'] for x in outputs])
-        all_pred = list(chain(*[x['id_pred'] for x in outputs]))
+        all_pred = np.array(list(chain(*[x['id_pred'] for x in outputs])))
+        logits = nn.Sigmoid()(torch.Tensor(list(chain(*[x['logits'] for x in outputs])))).reshape(-1, 1)
+        y_true = np.array(list(chain(*[x['y_true'] for x in outputs])))
 
         score, acc = compute_score(self.ds_val, all_pred)
-        
+        #compute_precision_recall(y_true, logits)
+
+        logits = np.hstack((np.zeros((logits.shape[0], 1)), logits))
+        for l in logits:
+            l[0] = 1 - l[1]
+
         logger.info(score)
-        logs = {'eval_loss': avg_loss, 'val_acc': acc}
+        
+        f1 = f1_score(y_true, all_pred[:, 1], labels=np.unique(all_pred))
+        # Precision Recall
+        self.logger.log_metrics({'pr': wandb.plots.precision_recall(y_true, logits, ["no_target", "target"])})
+        logs = {'eval_loss': avg_loss, 'val_acc': acc, 'f1_score': f1}
+
         return {'val_loss': avg_loss, 'log': logs}
 
 
