@@ -12,7 +12,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+
 from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import WandbLogger
 
 from model import Net
 from parser import parse_args, parse_config
@@ -39,7 +41,8 @@ if __name__ == "__main__":
     np.random.seed(seed=args.seed)
 
     model = Net(args)
-    trainer = Trainer(gpus=1, max_epochs=10000) #num_sanity_val_steps=0 max_epochs=10 early_stop_callback=True
+    wandb_logger = WandbLogger(name='test',project='snips')
+    trainer = Trainer(gpus=1, max_epochs=10, logger=wandb_logger) #num_sanity_val_steps=0 max_epochs=10 early_stop_callback=True
     trainer.fit(model)
     #trainer.test()
 
